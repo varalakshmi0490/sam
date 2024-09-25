@@ -1,0 +1,9 @@
+
+
+file types in terraform
+........................
+
+text.tf - terraform
+main.tf  - actual code of resourses
+provider.tf - configaration of provider 
+variables.tf - declare variables 

@@ -1,0 +1,309 @@
+
+What is DNS?
+................
+
+The Domain Name System (DNS) is the phonebook of the Internet. Humans access information online through domain names, like nytimes.com or espn.com.  Web browsers interact through Internet Protocol (IP) addresses. DNS translates domain names to IP addresses so browsers can load Internet resources.
+
+Each device connected to the Internet has a unique IP address which other machines use to find the device. DNS servers eliminate the need for humans to memorize IP addresses such as 192.168.1.1 (in IPv4), or more complex newer alphanumeric IP addresses such as 2400:cb00:2048:1::c629:d7a2 (in IPv6).
+Types of DNS
+
+
+Internal DNS:
+...............
+Internal DNS servers hold all the server names and IP addresses for their domains and will share them with anyone that asks. Internal DNS is for domains that aren't necessarily registered with a domain registrar.
+
+
+External DNS:
+..............
+An external DNS is a publicly accessible third-party domain name server that's generally open for anyone on the internet to access and update. External DNS allows you to query for the IP address of a domain. An external DNS provider is also known as a public DNS provider.
+
+
+Features of DNS
+....................
+
+DNS resursion: DNS recursive lookup is where one DNS server communicates with several other DNS servers to hunt down an IP address and return it to the client.
+
+
+Forwarder entries: If the requested DNS entry is not hosted on the internal server, internal DNS service (iDNS) requests are forwarded to these configured IP addresses—these should be two or more reliable upstream DNS servers. These upstream servers will in turn cache DNS entries and expire them as their TTL timers expire
+
+
+Caching: Caching mechanism built in the protocol speeds up the process by storing information for periods of time and re-using it for future DNS queries.
+
+
+Dynamic registration: DNS is often configured to allow dynamic registration of the hosts which have IPs assigned by DHCP, either by populating DNS from DHCP addresses as they are assigned or by permitting the hosts to register themselves in DNS.
+
+
+Host redundancy: DNS host redundancy is a failsafe solution or a backup mechanism for DNS outages – outages resulting from configuration errors, infrastructure failure, or a DDoS attack.
+
+
+Implementation of DNS
+........................
+DNS Server: A DNS server is a computer system that is responsible for resolving domain names to IP addresses. There are two types of DNS servers: authoritative and recursive.
+Authoritative DNS servers provide answers to DNS queries about domain names that are stored in their zone files. They are responsible for storing and maintaining the authoritative DNS records for a domain name.
+Recursive DNS servers, on the other hand, query authoritative DNS servers to resolve domain names. They act as intermediaries between DNS clients and authoritative DNS servers. Recursive DNS servers cache DNS records to improve query response times.
+DNS Resolver: A DNS resolver is a program that runs on a computer and sends DNS queries to a DNS server to resolve domain names. It uses the DNS protocol to communicate with DNS servers.
+DNS Record: A DNS record is a data structure that contains information about a domain name, such as its IP address, domain name server (DNS) information, and other related information. There are several types of DNS records, including A, AAAA, CNAME, MX, NS, PTR, SOA, and TXT.
+DNS Protocol: DNS protocol is a set of rules that govern how DNS queries and responses are sent and received between DNS clients and servers. DNS protocol uses UDP (User Datagram Protocol) for DNS queries and responses over port 53.
+DNS Zone: A DNS zone is a portion of the DNS namespace that is managed by a single organization or entity. Each DNS zone contains a set of authoritative DNS servers that are responsible for storing and maintaining the DNS records for domain names within that zone.
+To implement DNS, you would need to set up authoritative DNS servers for your domain names, configure your DNS records, set up recursive DNS servers for DNS resolution, and configure DNS resolvers on your client computers to query the DNS servers. Additionally, you would need to ensure that your DNS servers are secure, reliable, and highly available to prevent DNS-related issues such as DNS spoofing, DNS cache poisoning, and DNS outages.
+
+
+
+
+
+Implementing an internal DNS Server
+.....................................
+Most common DNS implementation is done using BIND DNS tool in Linux. BIND is the most often implemented in Linux, and is arguably both the most flexible and complete, as well as the most difficult to configure and troubleshoot.
+
+Let's get on with building our internal DNS server using BIND application.
+Basic installation:https://www.fosslinux.com/7631/how-to-install-and-configure-dns-on-ubuntu.htm
+The following command is used to install BIND in Linux.
+
+$ sudo apt-get install –y bind9  
+Now open /etc/hosts to make changes such as:
+12.0.0.1            localhost
+127.0.1.1           ubuntu.test.com   ubuntu
+<Your Static IP>    ubuntu.test.com   ubuntu
+Change various .conf files
+The next step involves editing the /etc/bind/named.conf.options file to add several options. These options include
+
+allowing queries from local subnets
+defining the listening port (which is correct by default),
+enabling recursive queries
+and defining a list of DNS forwarders for recursion to work. The author suggests using Google and Cloudflare for DNS forwarding.
+The above changes made should look something like this:
+
+options {
+directory "/var/cache/bind";
+listen-on port 53 { localhost; };
+allow-query { localhost; 192.168.0.0/16; 10.0.0.0/8; 172.16.0.0/12; };
+forwarders { 8.8.8.8; 8.8.4.4; 1.1.1.1; };
+
+recursion yes;
+}
+The next step involves editing the /etc/bind/named.conf.local file to add
+
+The server type -zone
+Zone filename
+Allow workstations to register their DNS records with the server.
+The DNS records are stored in a separate file, the zone file, which is located in /var/cache/bind/< zone file name >.
+
+zone "coherentsecurity.com" IN {
+      type master;
+      file "coherentsecurity.com.zone";
+      allow-update { 192.168.0.0/16; 10.0.0.0/8;172.16.0.0/12 };
+};
+The zone file needs to be edited to add the necessary records, including A records that identify the IP addresses of each host, updating the SOA line with the zone and name server's FQDN, and updating the TTL value in the last line in the SOA record. The default TTL value is 86400 seconds (24 hours) and may need to be shortened during maintenance to allow changes to take effect sooner.
+Now navigate to named.conf.local to add the following zones for forward and reverse lookup zones:
+zone "test.com" IN {
+	type master;
+	file "/etc/bind/db.test.com";
+};
+
+zone "reverseTest.in-addr.arpa" IN {
+	type master;
+	file "/etc/bind/db.reverseTest";
+};
+After this, to check whether the changes are effective we can try the command:
+named-checkconf
+If no errors are reported then the changes made are effective. Now, Firstly we will create a db file for forward lookup zone. We will use the db.local file in /etc/bind:
+Using the command:
+cp db.local db.test.com
+These are the changes to make in db.test.com
+@	IN	NS	ns1.test.com.
+ns1	IN	A	<Your static IP>
+www	IN	A	<Your static IP>
+ftp	IN	A	<Your static IP>
+@	IN	MX	10	mail
+mail	IN	A	<Your static IP>
+@	IN	AAAA	::1
+Next, we are creating db file for reverse lookup zone. We will us the db.127 file in /etc/bind: Using the command:
+cp db.127 db.reverseTest
+Add the following changes in the newly create db.reverseTest file:
+@	IN	NS	ns1.test.com.
+15	IN	PTR	ns1.test.com.
+15	IN	PTR	wwww.test.com.
+15	IN	PTR	ftp.test.com.
+15	IN	PTR	mail.test.com.
+Finally, enable the bind9 service and start it. To start bind9 use:
+service bind9 start
+If nothing is returned, then BIND is successfully running, otherwise, if it is giving any error, you have to check /var/log/syslog to resolve the issue.
+Now, use nslookup to check whether BIND can resolve hostnames in our zones or not:
+nslookup wwww.test.com
+We can see that BIND can successfully resolve hostnames in our zones:
+Server:		192.168.0.105
+Address:	192.168.144.131#53
+
+Name:	www.test.com
+Address: 192.168.144.131
+
+
+
+
+
+Implement DNS server on Linux using dnsmasq
+..............................................
+
+What is dnsmasq?
+.......................
+DNS masquerade or dnsmasq is a lightweight DNS forwarder. It is specifically designed to provide a small-scale network with DNS (and optionally DHCP and TFTP) services. It serves the names of local machines that are not included in the global DNS.
+
+How to Install dnsmasq
+...........................
+
+To install dnsmasq:
+
+sudo apt install dnsmasq
+Screenshot_from_2023-03-18_01-10-56
+
+I was running ubuntu 22.04 so I was getting error of Port 53 UDP already in use. I had to disable default systemd-resolved service.
+
+To disable systemd-resolved:
+
+systemctl disable systemd-resolved
+systemctl stop systemd-resolved
+Once dnsmasq is installed, you can check it's status by:
+
+systemctl status dnsmasq
+If the service is not running, you can start it by:
+
+sudo systemctl start dnsmasq
+To start the service each time system boots up:
+
+sudo systemctl enable dnsmasq
+Screenshot_from_2023-03-18_01-20-47
+
+Configure the dnsmasq server
+To configure dnsmasq server you have to modify /etc/dnsmasq.conf file. Since DNS is enabled by default, so create backup of file before modifying. To do so:
+
+cp /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
+To modify the /etc/dnsmasq.conf file open it in text editor of your choice:
+
+nano /etc/dnsmasq.conf
+Insert the following configuration to the file, you can add some others or change parameters based on your needs:
+
+listen-address=::1,127.0.0.1,192.168.56.100
+interface=eth0
+domain=domain.abc
+address=/domain.abc/127.0.0.1
+address=/domain.abc/192.168.56.100
+
+#Google's nameservers
+server=8.8.8.8
+server=4.4.4.4
+We can customize this configuration based on our needs.
+
+We can check the possible errors by using the following command.
+
+sudo dnsmasq --test
+
+This will check for any errors in the configuration.
+
+Now we have to modify resolv.conf file
+
+Modify the /etc/resolv.conf file using gedit
+
+sudo gedit /etc/resolv.conf
+after opening the file add the following nameserver
+
+# Set localhost as nameserver
+nameserver 127.0.0.1
+then save and exit this file
+
+Change the file’s attributes using the chattr command to make our file immutable. This prevents the local network manager from overwriting our changes.
+
+sudo chattr +i /etc/resolv.conf
+to check whether attribute is set use following command
+
+sudo lsattr /etc/resolv.conf
+Modify the /etc/hosts file using a text editor by adding the IP addresses and hostnames of the DNS hosts:
+
+to open this file use command
+
+sudo gedit /etc/hosts
+and modify the file as follows
+
+127.0.0.1    localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1          localhost localhost.localdomain localhost6 localhost6.1ocaldomain6
+127.0.0.1    dnsmasq
+192.168.56.100    dnsmasq
+192.168.56.1    gateway
+192.168.56.110    webservertest
+Restart the dnsmasq service to apply the changes:
+
+sudo systemctl restart dnsmasq
+
+Test the DNS server by running the command:
+
+nslookup domain.abc
+
+we can also test the fully qualified domain name by running the command:
+
+nslookup webservertest.domain.abc
+
+
+
+Implement DNS server on Linux using dnsmasq using BrainyPi
+..............................................................
+
+
+What is dnsmasq?
+
+Dnsmasq is a lightweight, easy to configure, DNS forwarder and DHCP server. It is designed to provide DNS and optionally, DHCP, to a small network. It can serve the names of local machines which are not in the global DNS.
+
+dnsmasq is pre-installed in the BrainyPi machine.
+
+SSH into brainy pi
+ssh shunya@auth.iotiot.in -p 65520
+Editing dnsmasq.conf
+sudo vi /etc/dnsmasq.conf
+Adding following lines
+listen-address=::1,127.0.0.1,192.168.56.100                           
+interface=eth0                                                                  
+domain=testbrainypitest.test                                          
+address=/testbrainypitest.test/127.0.0.1                                   
+address=/testbrainypitest.test/192.168.56.100                         
+                                                                            
+#Google's nameservers                                                           
+server=8.8.8.8                                                        
+server=4.4.4.4
+Screenshot_from_2023-03-21_00-16-48
+
+Edit resolv.conf
+Sudo nano /etc/resolv.conf
+nameserver 127.0.0.1
+Restart dnsmasq service
+sudo systemctl restart dnsmasq
+Checking with nslookup
+  nslookup testbrainypitest.test
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

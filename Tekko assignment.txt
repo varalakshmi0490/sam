@@ -1,0 +1,123 @@
+
+Assignment:
+...........
+
+Your task is to establish a three-tier architecture using either AWS or Azure and deploy the Aquila MERN application on it, while adhering to the following requirements:
+
+1. The web application server's IP should remain hidden from the internet, ensuring it is not exposed.
+2. Users should not have the ability to log in to the application and database servers using the public IP addresses of the servers
+
+
+Answer:
+......
+
+To establish a three-tier architecture using AWS or Azure and deploy the Aquila MERN application while adhering to the given requirements, follow the steps below:
+Note: The following steps provide a general outline, and the actual implementation may vary depending on your specific needs and the cloud platform you choose.
+Choose your preferred cloud platform:
+
+AWS: Amazon Web Services
+Set up the infrastructure:
+
+AWS:
+1.Create a Virtual Private Cloud (VPC) to isolate your resources.
+2.Configure subnets within the VPC:
+     a.Public Subnet: This subnet will host the load balancer and will have internet access.
+     b.Private Subnet (Web Tier): This subnet will host the web application servers and should not have direct internet access.
+     c.Private Subnet (Database Tier): This subnet will host the database servers and should not have direct internet access.
+
+3.Configure Security Groups:
+
+    a.Create a security group for the web application servers that allows incoming traffic from the load balancer and restricts outbound traffic.
+    b.Create a security group for the database servers that allows incoming traffic from the web application servers and restricts outbound traffic.
+
+4.Set up a Network Address Translation (NAT) Gateway or NAT instance in the public subnet to provide outbound internet access to the web application servers in the private subnet.
+
+5.Create an Application Load Balancer (ALB) or Network Load Balancer (NLB) in the public subnet to distribute incoming traffic to the web application servers.
+
+6.Launch EC2 instances (AWS)  in the respective private subnets.
+
+7.Install the necessary software dependencies, such as Node.js, MongoDB, and any other dependencies required by the Aquila MERN application.
+
+8.Configure the security groups or NSGs to allow inbound traffic from the load balancer and restrict outbound traffic.
+
+9.Deploy the Aquila MERN application code to the web application servers.
+
+10.Configure the database tier:
+    a.Set up a database service:
+    b.AWS: Use Amazon RDS for a managed database service.
+
+11.Create a database instance with the required configurations (e.g., database engine, storage size, security settings).
+
+12.Update the application's configuration files to connect to the database using the appropriate connection string.
+
+13.Test the deployment:
+   a.Ensure that the load balancer's public IP or DNS name is accessible from the internet.
+   b.Access the Aquila MERN application through the load balancer and test its functionality, including data storage and retrieval.
+   c.Verify that the
+
+
+ High-Level Design (HLD) diagram representing your three tier architecture
+.............................................................................
+
+
+ code
+  +-----------------+                  +---------------------+                +-------------------+
+  |   Frontend      |    <---- HTTP ----    |   Load Balancer     |    <----     |   Backend        |
+  |   Web App       |    ---- HTTPS ---->    |   (ALB/Load        |     ----     |   Application    |
+  |   Instances     |                  |    |   Balancer)         |                |   Server         |
+  +-----------------+                  +---------------------+                +-------------------+
+          |                                               |
+          |                                               |
+          |                                               |
+          |                                               |
+          |                                               |
+          |              +-----------------+              |
+          |              |   Application   |              |
+          |     ------   |   Server        |   ------     |
+          |    |         |   Private Subnet|         |    |
+          |    |         +-----------------+         |    |
+          |    |                                  |    |
+          |    |                                  |    |
+          |    |                                  |    |
+          |    |                                  |    |
+          |    |         +-----------------+         |    |
+          |    |         |   Database      |         |    |
+          |     ------   |   Server        |   ------     |
+          |              |   Private Subnet|              |
+          |              +-----------------+              |
+          |                                               |
+          |                                               |
+          |                                               |
+          |                                               |
+  +-----------------+                  +---------------------+
+  |   Public        |                  |   Private           |
+  |   Subnet        |                  |   Subnet            |
+  |   (Internet)    |                  |   (No Internet)     |
+  +-----------------+                  +---------------------+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
